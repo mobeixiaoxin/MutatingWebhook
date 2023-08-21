@@ -21,24 +21,31 @@ import (
 	"time"
 )
 
+// PatchOperation 定义了用于 JSON 补丁操作的结构体
 type PatchOperation struct {
 	Op    string      `json:"op"`
 	Path  string      `json:"path"`
 	Value interface{} `json:"value,omitempty"`
 }
 
+// 用于存储补丁操作
 var Patches []PatchOperation
+
+
 var (
 	scheme = runtime.NewScheme()
 	Codecs = serializer.NewCodecFactory(scheme)
 )
 
 func main() {
+	// 初始化 glog 配置
 	//Initializing the glog configuration
 	flag.Parse()
 	flag.Set("logtostderr", "false")
 	flag.Set("alsologtostderr", "false")
 	flag.Set("log_dir", "/var/log/myapp")
+
+	// 启动 glog 刷新循环，每秒刷新一次日志
 	go func() {
 		for {
 			glog.Flush()
@@ -46,39 +53,52 @@ func main() {
 		}
 	}()
 
+	
+        // 读取证书文件和私钥文件
 	// Read certificate file and private key file
 	cert, err := tls.LoadX509KeyPair("/etc/webhook/certs/tls.crt", "/etc/webhook/certs/tls.key")
 	if err != nil {
 		glog.Errorf("get cert fail.err is :", err)
 		panic(err)
 	}
-
+        // 创建 TLS 配置
 	// Creating a TLS Configuration
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		//ClientCAs:    caCertPool,
 		//ClientAuth:   tls.RequireAndVerifyClientCert,
 	}
+
+	// 创建 HTTP 服务器
 	// Create an HTTP server
 	server := &http.Server{
 		Addr:      ":8443",
 		TLSConfig: tlsConfig,
 	}
 
+	// 处理 /webhook 路径的请求，使用 applyNode 处理器
 	// start services
 	http.Handle("/webhook", New(&applyNode{}))
+
+	// 创建 Kubernetes 客户端
 	client.NewClientK8s()
+
+	// 创建 Kubernetes 客户端
 	if err := server.ListenAndServeTLS("", ""); err != nil {
 		glog.Errorf("server start fail,err is:", err)
 		panic(err)
 	}
 }
 
+// applyNode 定义了应用节点的处理器
 type applyNode struct {
 }
 
+// 实现 handler 接口，处理 HTTP 请求
 func (ch *applyNode) handler(w http.ResponseWriter, r *http.Request) {
 	var writeErr error
+	
+	// 实现 handler 接口，处理 HTTP 请求
 	if bytes, err := webHookVerify(w, r); err != nil {
 		glog.Errorf("Error handling webhook request: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -89,12 +109,15 @@ func (ch *applyNode) handler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 	}
+
+	// 处理可能的写入错误
 	if writeErr != nil {
 		glog.Errorf("Could not write response: %v", writeErr)
 	}
 	return
 }
 
+// webHookVerify 验证和处理 Webhook 请求
 func webHookVerify(w http.ResponseWriter, r *http.Request) (bytes []byte, err error) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -106,6 +129,7 @@ func webHookVerify(w http.ResponseWriter, r *http.Request) (bytes []byte, err er
 		return nil, fmt.Errorf("unsupported content type %s, only %s is supported", contentType, `application/json`)
 	}
 
+	// 解析 AdmissionReview 请求
 	var admissionReviewReq v1beta1.AdmissionReview
 	if err := json.NewDecoder(r.Body).Decode(&admissionReviewReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -118,6 +142,7 @@ func webHookVerify(w http.ResponseWriter, r *http.Request) (bytes []byte, err er
 	//jsonData, err := json.Marshal(admissionReviewReq)
 	//fmt.Println(string(jsonData))
 
+	// 从 AdmissionReview 请求中解码对象，这里假设是 Node 对象
 	//You can add multiple services here, if you are modifying a node, go to the server of the node, if it is a pod you can go to the server of the pod
 	node := corev1.Node{}
 	obj, _, err := Codecs.UniversalDecoder().Decode(admissionReviewReq.Request.Object.Raw, nil, &node)
