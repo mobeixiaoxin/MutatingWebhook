@@ -274,7 +274,7 @@ func New(handler Handler) *HandleProxy {
 	}
 }
 
-//The Handle needs to implement ServeHTTP
+// The Handle needs to implement ServeHTTP
 // 为 HandleProxy 结构体定义了一个方法 ServeHTTP，该方法是为了实现 http.Handler 接口的要求
 // HandleProxy 结构体可以用作 HTTP 处理器
 func (h *HandleProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
