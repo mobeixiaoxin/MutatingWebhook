@@ -188,8 +188,8 @@ func nodePatch(admissionReviewReq v1beta1.AdmissionReview, nodeInfo corev1.Node)
 	}
 
 	//抓取node的capacity和allocatable值
-	capacityCpu := nodeInfo.Status.Capacity.Cpu().MilliValue()       //单位 m，1c = 1000m     describe node得到的capacity.cpu字段值
-	capacityMem := nodeInfo.Status.Capacity.Memory().Value() / (1024 * 1024)   //单位 M       describe node得到的capacity.memory字段值
+	// capacityCpu := nodeInfo.Status.Capacity.Cpu().MilliValue()       //单位 m，1c = 1000m     describe node得到的capacity.cpu字段值
+	// capacityMem := nodeInfo.Status.Capacity.Memory().Value() / (1024 * 1024)   //单位 M       describe node得到的capacity.memory字段值
 
 	allocatableCpu := nodeInfo.Status.Allocatable.Cpu().MilliValue()
 	allocatableMem := nodeInfo.Status.Allocatable.Memory().Value()/(1024*1024)
