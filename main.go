@@ -186,32 +186,43 @@ func nodePatch(admissionReviewReq v1beta1.AdmissionReview, nodeInfo corev1.Node)
 	if err != nil {
 		panic(err.Error())
 	}
-	capacityCpu := nodeInfo.Status.Capacity.Cpu().MilliValue()
-	capacityMem := nodeInfo.Status.Capacity.Memory().Value() / (1024 * 1024)
-	//fmt.Println("capacityCpu cpu is", capacityCpu)
-	//fmt.Println("capacityMem mem is", capacityMem)
-	//fmt.Println("Allocatable cpu is", nodeInfo.Status.Allocatable.Cpu().MilliValue())
-	//fmt.Println("Allocatable string cpu is", nodeInfo.Status.Allocatable.Cpu().String())
-	//fmt.Println("Allocatable string mem is", nodeInfo.Status.Allocatable.Memory().String())
-	//fmt.Println("Allocatable mem is", nodeInfo.Status.Allocatable.Memory().Value()/(1024*1024))
-	//fmt.Println("nodeMetrics cpu is", nodeMetrics.Usage.Cpu().MilliValue())
-	//fmt.Println("nodeMetrics mem is", nodeMetrics.Usage.Memory().Value()/(1024*1024))
 
-	// 计算可分配的 CPU 和内存
-	allocatableCpu := capacityCpu - nodeMetrics.Usage.Cpu().MilliValue()
-	allocatableMem := capacityMem - nodeMetrics.Usage.Memory().Value()/(1024*1024)
+	//抓取node的capacity和allocatable值
+	capacityCpu := nodeInfo.Status.Capacity.Cpu().MilliValue()       //单位 m，1c = 1000m     describe node得到的capacity.cpu字段值
+	capacityMem := nodeInfo.Status.Capacity.Memory().Value() / (1024 * 1024)   //单位 M       describe node得到的capacity.memory字段值
+
+	allocatableCpu := nodeInfo.Status.Allocatable.Cpu().MilliValue()
+	allocatableMem := nodeInfo.Status.Allocatable.Memory().Value()/(1024*1024)
+	
+	//fmt.Println("capacityCpu cpu is", capacityCpu)       //单位 m，1c = 1000m     describe node得到的capacity.cpu字段值 (数值)
+	//fmt.Println("capacityMem mem is", capacityMem)       //单位 M       describe node得到的capacity.memory字段值      (数值)
+	
+	//fmt.Println("Allocatable string cpu is", nodeInfo.Status.Allocatable.Cpu().String())    //单位 c     describe node得到的allocatable.cpu字段值    (字符串)
+	//fmt.Println("Allocatable string mem is", nodeInfo.Status.Allocatable.Memory().String()) //单位 Ki       describe node得到的allocatable.memory字段值   (字符串)
+	
+	//fmt.Println("Allocatable cpu is", nodeInfo.Status.Allocatable.Cpu().MilliValue())           //单位 m，1c = 1000m     describe node得到的allocatable.cpu字段值    (数值)
+	//fmt.Println("Allocatable mem is", nodeInfo.Status.Allocatable.Memory().Value()/(1024*1024))   //单位 M       describe node得到的allocatable.memory字段值         (数值)
+	
+	//fmt.Println("nodeMetrics cpu is", nodeMetrics.Usage.Cpu().MilliValue())               //单位 m，1c = 1000m    node实际资源使用量
+	//fmt.Println("nodeMetrics mem is", nodeMetrics.Usage.Memory().Value()/(1024*1024))     //单位 M                 node实际资源使用量
+ 
+	// 计算节点剩余的 CPU 和内存资源
+	// allocatableCpu := capacityCpu - nodeMetrics.Usage.Cpu().MilliValue()
+	// allocatableMem := capacityMem - nodeMetrics.Usage.Memory().Value()/(1024*1024)
+	availableCpu := allocatableCpu - nodeMetrics.Usage.Cpu().MilliValue()
+	availableMem := allocatableMem - nodeMetrics.Usage.Memory().Value()/(1024*1024)
 
 	// 根据计算结果，确定最终的 CPU 和内存值
-	if allocatableCpu > nodeInfo.Status.Allocatable.Cpu().MilliValue() {
-		floatCpu := math.Round(float64(allocatableCpu / 1000))
+	if availableCpu > allocatableCpu {
+		floatCpu := math.Round(float64(availableCpu / 1000))
 		finalCpu = strconv.FormatFloat(floatCpu, 'f', -1, 64)
 	} else {
-		finalCpu = nodeInfo.Status.Allocatable.Cpu().String()
+		finalCpu = nodeInfo.Status.Allocatable.Cpu().String()    //单位 c     describe node得到的allocatable.cpu字段值    (字符串)
 	}
-	if allocatableMem > nodeInfo.Status.Allocatable.Memory().Value()/(1024*1024) {
-		finalMem = strconv.Itoa(int(allocatableMem*1024)) + "Ki"
+	if availableMem > allocatableMem {
+		finalMem = strconv.Itoa(int(availableMem*1024)) + "Ki"
 	} else {
-		finalMem = nodeInfo.Status.Allocatable.Memory().String()
+		finalMem = nodeInfo.Status.Allocatable.Memory().String()   //单位 Ki       describe node得到的allocatable.memory字段值   (字符串)
 	}
 
 	// 构建 AdmissionReview 响应结构
