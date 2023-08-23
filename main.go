@@ -214,13 +214,13 @@ func nodePatch(admissionReviewReq v1beta1.AdmissionReview, nodeInfo corev1.Node)
 
 	// 根据计算结果，确定最终的 CPU 和内存值
 	if availableCpu > allocatableCpu {
-		floatCpu := math.Round(float64(availableCpu / 1000))
+		floatCpu := math.Round(float64(availableCpu / 1000))     //目的是将单位换成c,且将类型换成字符串类型
 		finalCpu = strconv.FormatFloat(floatCpu, 'f', -1, 64)
 	} else {
 		finalCpu = nodeInfo.Status.Allocatable.Cpu().String()    //单位 c     describe node得到的allocatable.cpu字段值    (字符串)
 	}
 	if availableMem > allocatableMem {
-		finalMem = strconv.Itoa(int(availableMem*1024)) + "Ki"
+		finalMem = strconv.Itoa(int(availableMem*1024)) + "Ki"   //目的是将单位换成Ki,且将类型换成字符串类型
 	} else {
 		finalMem = nodeInfo.Status.Allocatable.Memory().String()   //单位 Ki       describe node得到的allocatable.memory字段值   (字符串)
 	}
